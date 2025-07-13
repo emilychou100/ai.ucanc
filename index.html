@@ -7,6 +7,7 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 24px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -27,15 +28,17 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 600px;
+            max-width: 1200px;
         }
         #topicInput {
             width: 80%;
+            font-size: 18px;
             padding: 0.5rem;
             border: 1px solid #ccc;
             border-radius: 4px;
         }
         #startButton {
+        	font-size: 22px;
             padding: 0.6rem 1.2rem;
             border: none;
             background-color: #007bff;
@@ -55,6 +58,7 @@
             padding: 0.5rem 0;
         }
         #subtopicsContainer button {
+        	font-size: 20px;
             padding: 0.5rem 1rem;
             border: 1px solid #007bff;
             background-color: #f0f8ff;
@@ -66,9 +70,12 @@
             background-color: #e0f0ff;
         }
         #descriptionBox {
+        	font-size: 16px;
             width: 80%;
+            height: 60%;
             padding: 0.5rem;
             border: 1px solid #ccc;
+            
             border-radius: 4px;
             background-color: #fafafa;
         }
@@ -80,7 +87,7 @@
 </head>
 <body>
 
-    <h1>ai you can see</h1>
+    <h1>AI you can see</h1>
 
     <div id="mainContainer">
         <label for="topicInput">Start a Topic</label>
@@ -96,11 +103,13 @@
     </div>
 
     <script>
+    	//subtopics array
+    	let prompt = "";
+    	let subtopicsHistoryList = [];
+    	let currentSubtopic = "";
     	const API_KEY = 'AIzaSyD8tBWYFinl1qakry1zmgbPdWMrzMZ88pw'; 
 		const MODEL_NAME = 'gemini-2.5-flash'; // Or 'gemini-1.5-pro', 'gemini-1.5-flash', etc.
 		const API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
-		//const API_URL = ${API_BASE_URL}/models/${MODEL_NAME}:generateContent?key=${API_KEY}';
-		//const API_URL = API_BASE_URL + 
 		
         const API_URL = `${API_BASE_URL}/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 		console.log(API_URL);
@@ -159,7 +168,9 @@
                     const button = document.createElement('button');
                     button.textContent = subtopic;
                     button.addEventListener('click', () => {
-                        topicInput.value = subtopic;
+                        currentSubtopic= subtopic;
+                        console.log("current subtopic is " + currentSubtopic);
+                        
                         startTopic(); // Trigger a new search for the subtopic
                     });
                     subtopicsContainer.appendChild(button);
@@ -172,7 +183,22 @@
 
         // Generates and displays a description for a given topic
         async function generateDescription(topic) {
-            const prompt = `Provide a concise, single-paragraph description for the following topic: "${topic}".`;
+        	 prompt = `Provide a concise, single-paragraph description for the following topic: "${topic}"`
+            
+            //if there is a current subtopic, change prompt to include keywords and add current subtopic to list.
+            if(currentSubtopic != "" && subtopicsHistoryList.length == 0){
+        		prompt = `Provide a concise, single-paragraph description for the following topic: ` + currentSubtopic + `, with the context of ${topic}. Do not repeat the prompt in the first sentence of the description and output the description in normal text without the use of any special symbols unless needed.`;
+             	subtopicsHistoryList.push(currentSubtopic);                        
+                console.log(subtopicsHistoryList);
+             }
+             else if(currentSubtopic != "" && subtopicsHistoryList.length >=1){
+        		prompt = `Provide a concise, single-paragraph description for the following topic: ` + currentSubtopic + `, with the context of ${topic} and related to the following keywords: ` + subtopicsHistoryList + `. Do not repeat the prompt in the first sentence of the description and output the description in normal text without the use of any special symbols unless needed.`;
+             	subtopicsHistoryList.push(currentSubtopic);                        
+            }
+            else{
+            	console.log("no subtopics");
+            }
+             console.log("prompt: " + prompt);
             const description = await callGeminiAPI(prompt);
             descriptionBox.value = description;
         }
@@ -194,13 +220,14 @@
             startButton.disabled = true;
             descriptionBox.value = '';
             subtopicsContainer.innerHTML = '';
-
-            // Run both API calls concurrently
+			
+			
+            // Run both API calls concurrently      
             await Promise.all([
                 generateDescription(topic),
                 generateSubtopics(topic)
             ]);
-
+            
             // Hide loading indicator and re-enable button
             loadingIndicator.style.display = 'none';
             startButton.disabled = false;
